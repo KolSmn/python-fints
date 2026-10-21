@@ -167,6 +167,31 @@ def fints_server():
                             result.append("HIRMS::2:{}+0030::Auftragsfreigabe erforderlich'".format(hktan.group(1).decode('us-ascii')).encode('us-ascii'))
                             result.append("HITAN::{}:{}+2++{}+{}'".format(hktan.group(2).decode('us-ascii'), hktan.group(1).decode('us-ascii'), ref, tanmsg).encode('us-ascii'))
 
+            hkcdb = re.search(rb"'HKCDB:(\d+):1\+", message)
+            if hkcdb:
+                segno = hkcdb.group(1).decode('us-ascii')
+                standing_orders = [
+                    ('ORDER1', 'Max Vermieter', 'DE02120300000000202051', '850.00', 'Miete', '20250101:M:1:1++J+J+J'),
+                    ('ORDER2', 'Sportverein', 'DE02500105170137075030', '25.50', 'Beitrag', '20250215:M:3:15:20271231+N:20251101:20251130::0,:EUR+N+N+J'),
+                ]
+                for task_id, name, iban, amount, reason, details in standing_orders:
+                    pain = (
+                        '<?xml version="1.0" encoding="UTF-8"?>'
+                        '<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03"><CstmrCdtTrfInitn>'
+                        '<PmtInf><DbtrAcct><Id><IBAN>DE111234567800000001</IBAN></Id></DbtrAcct>'
+                        '<CdtTrfTxInf><PmtId><EndToEndId>NOTPROVIDED</EndToEndId></PmtId>'
+                        '<Amt><InstdAmt Ccy="EUR">{}</InstdAmt></Amt>'
+                        '<Cdtr><Nm>{}</Nm></Cdtr><CdtrAcct><Id><IBAN>{}</IBAN></Id></CdtrAcct>'
+                        '<RmtInf><Ustrd>{}</Ustrd></RmtInf></CdtTrfTxInf>'
+                        '</PmtInf></CstmrCdtTrfInitn></Document>'
+                    ).format(amount, name, iban, reason).encode('utf-8')
+                    result.append(
+                        "HICDB::1:{}+DE111234567800000001:GENODE23X42+urn?:iso?:std?:iso?:20022?:tech?:xsd?:pain.001.001.03+@{}@".format(
+                            segno, len(pain)).encode('us-ascii')
+                        + pain
+                        + "+{}+{}'".format(task_id, details).encode('us-ascii')
+                    )
+
             hktan = re.search(rb"'HKTAN:(\d+):(\d+)\+2\+\+\+\+([^+]+)\+", message)
             if hktan:
                 segno = hktan.group(1).decode('us-ascii')

@@ -227,3 +227,18 @@ def test_get_transactions(fints_client):
 
         assert len(transactions) == 3
         assert transactions[0].data['amount'].amount == Decimal('182.34')
+
+
+def test_get_standing_orders(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        assert len(standing_orders) == 2
+        assert standing_orders[0].task_id == 'ORDER1'
+        assert standing_orders[0].standing_order_details.interval == 1
+        assert b'Max Vermieter' in standing_orders[0].sepa_pain_message
+        assert standing_orders[1].suspension.annually_recurring is False
+        assert standing_orders[1].suspension.suspension_end.isoformat() == '2025-11-30'
+        assert standing_orders[1].task_cancelable is True

@@ -38,6 +38,7 @@ from .segments.depot import HKWPD5, HKWPD6
 from .segments.dialog import HIRMG2, HIRMS2, HISYN4, HKSYN3
 from .segments.journal import HKPRO3, HKPRO4
 from .segments.saldo import HKSAL5, HKSAL6, HKSAL7
+from .segments.standing_order import HKCDB1
 from .segments.statement import DKKKU2, HKKAZ5, HKKAZ6, HKKAZ7, HKCAZ1, HKKAU2, HKKAU1, HKEKA3, HKEKA4, HKEKA5
 from .segments.transfer import HKCCM1, HKCCS1, HKIPZ1, HKIPM1
 from .types import SegmentSequence
@@ -737,6 +738,38 @@ class FinTS3Client:
                 ),
                 lambda responses: responses,
                 response_type,
+            )
+
+        return responses
+
+    def get_standing_orders(self, account: SEPAAccount, task_id: str = None):
+        """
+        Retrieve SEPA standing orders (Daueraufträge) of an account.
+
+        :param account: SEPAAccount to retrieve standing orders for.
+        :param task_id: Only retrieve the standing order with this task id (Auftragsidentifikation).
+        :return: List of HICDB objects, each containing the order as SEPA pain.001 message
+        """
+        with self._get_dialog() as dialog:
+            hkcdb = self._find_highest_supported_command(HKCDB1)
+
+            hispas = self.bpd.find_segment_first('HISPAS')
+            supported_formats = list(hispas.parameter.supported_sepa_formats) if hispas else []
+            pain_descriptors = [f for f in supported_formats if 'pain.001' in f] or \
+                ['urn:iso:std:iso:20022:tech:xsd:pain.001.001.03']
+
+            responses = self._fetch_with_touchdowns(
+                dialog,
+                lambda touchdown: hkcdb(
+                    account=hkcdb._fields['account'].type.from_sepa_account(account),
+                    supported_sepa_pain_messages=hkcdb._fields['supported_sepa_pain_messages'].type(
+                        sepa_descriptors=pain_descriptors,
+                    ),
+                    task_id=task_id,
+                    touchdown_point=touchdown,
+                ),
+                lambda responses: responses,
+                'HICDB',
             )
 
         return responses

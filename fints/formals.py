@@ -1001,6 +1001,41 @@ class QueryScheduledBatchDebitParameter1(DataElementGroup):
     date_range_allowed = DataElementField(type='jn', _d="Zeitraum möglich")
 
 
+@doc_enum
+class StandingOrderTimeUnit1(RepresentableEnum):
+    MONTHLY = 'M'  # doc: Monatlich
+    WEEKLY = 'W'  # doc: Wöchentlich
+
+
+class StandingOrderDetails3(DataElementGroup):
+    """Dauerauftragsdetails, version 3
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    first_execution_date = DataElementField(type='dat', _d="Erstmals ausführen am")
+    time_unit = CodeField(enum=StandingOrderTimeUnit1, length=1, _d="Zeiteinheit")
+    interval = DataElementField(type='num', max_length=2, _d="Turnus")
+    execution_day = DataElementField(type='num', max_length=2, _d="Ausführungstag")
+    last_execution_date = DataElementField(type='dat', required=False, _d="Letztmals ausführen am")
+
+
+class StandingOrderSuspension3(DataElementGroup):
+    """Aussetzung, version 3
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    annually_recurring = DataElementField(type='jn', _d="Aussetzung jährlich wiederkehrend")
+    suspension_start = DataElementField(type='dat', required=False, _d="Aussetzen von")
+    suspension_end = DataElementField(type='dat', required=False, _d="Aussetzen bis")
+    number_suspensions = DataElementField(type='num', max_length=2, required=False, _d="Anzahl Aussetzungen")
+    different_amount = DataElementGroupField(type=Amount1, required=False, _d="Abweichender Betrag")
+
+
+class QueryStandingOrdersParameter1(DataElementGroup):
+    """Parameter SEPA-Dauerauftragsbestand, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    max_number_responses_allowed = DataElementField(type='jn', _d="Eingabe Anzahl Einträge erlaubt")
+
+
 class QueryCreditCardStatements2(DataElementGroup):
     """Parameter Kreditkartenumsätze anfordern, version 2
 
