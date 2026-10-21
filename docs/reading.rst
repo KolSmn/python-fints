@@ -74,3 +74,43 @@ You can fetch the holdings of an account with the ``get_holdings`` method:
 This method will return a list of ``Holding`` objects:
 
 .. autoclass:: fints.models.Holding
+
+
+Fetching standing orders
+------------------------
+
+You can fetch the SEPA standing orders ("Daueraufträge") of an account with the ``get_standing_orders`` method:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: get_standing_orders
+   :noindex:
+
+This method will return a list of ``HICDB1`` segments, one per standing order. The schedule is available in
+``standing_order_details`` (see :class:`~fints.formals.StandingOrderDetails3`), a suspension, if any, in
+``suspension`` (see :class:`~fints.formals.StandingOrderSuspension3`). Recipient, amount and purpose are contained in
+the SEPA pain.001 message in ``sepa_pain_message``, which you can parse e.g. with ``lxml``:
+
+.. code-block:: python
+
+    from lxml import etree
+
+    standing_orders = client.get_standing_orders(account)
+    while isinstance(standing_orders, NeedTANResponse):
+        standing_orders = ask_for_tan(standing_orders)
+
+    for order in standing_orders:
+        details = order.standing_order_details
+        print("Task ID:", order.task_id)
+        print("First/last execution:", details.first_execution_date, details.last_execution_date)
+        print("Interval:", details.interval, details.time_unit, "on day", details.execution_day)
+
+        # The pain.001 version depends on the bank, so match elements regardless of namespace
+        pain = etree.fromstring(order.sepa_pain_message)
+        for tx in pain.xpath('//*[local-name()="CdtTrfTxInf"]'):
+            def text(path):
+                found = tx.xpath('.//' + '/'.join('*[local-name()="{}"]'.format(p) for p in path.split('/')))
+                return found[0].text if found else None
+
+            print("Recipient:", text('Cdtr/Nm'), text('CdtrAcct/Id/IBAN'))
+            print("Amount:", text('Amt/InstdAmt'))
+            print("Purpose:", text('RmtInf/Ustrd'))
