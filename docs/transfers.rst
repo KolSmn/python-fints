@@ -167,7 +167,8 @@ Changing standing orders
 ------------------------
 
 To change a SEPA standing order, pass one of the objects returned by ``get_standing_orders`` (see
-:ref:`standing-orders`) together with the values to change. All values that are not given are kept:
+:ref:`standing-orders`) together with the values to change. All values that are not given are kept. To make a
+standing order unlimited, pass ``remove_last_execution_date=True``:
 
 .. autoclass:: fints.client.FinTS3Client
    :members: simple_change_standing_order

@@ -911,7 +911,7 @@ class FinTS3Client:
                                      bic: str = None, first_execution_date: datetime.date = None,
                                      time_unit: StandingOrderTimeUnit1 = None, interval: int = None,
                                      execution_day: int = None, last_execution_date: datetime.date = None,
-                                     execution_date: datetime.date = None):
+                                     remove_last_execution_date: bool = False, execution_date: datetime.date = None):
         """
         Simple change of a SEPA standing order (Dauerauftrag).
 
@@ -931,6 +931,8 @@ class FinTS3Client:
         :param interval: New interval (every ``interval`` months or weeks)
         :param execution_day: New day of the month (1-31) or of the week (1-7) to execute on
         :param last_execution_date: New date of the last execution
+        :param remove_last_execution_date: Remove the date of the last execution, i.e. make the standing order
+            unlimited (defaults to ``False``). Cannot be combined with ``last_execution_date``.
         :param execution_date: Execution date from which on the change applies. Only allowed if the bank
             supports scheduled changes. If not given, the change applies from the next execution on.
         :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
@@ -938,6 +940,12 @@ class FinTS3Client:
             asynchronously, so it can take a while until it is visible in ``get_standing_orders``.
         """
         details = standing_order.standing_order_details
+        if remove_last_execution_date:
+            if last_execution_date is not None:
+                raise ValueError("last_execution_date and remove_last_execution_date cannot be combined.")
+        elif last_execution_date is None:
+            last_execution_date = details.last_execution_date
+
         pain_message = modify_sepa_transfer_pain(
             standing_order.sepa_pain_message, amount=amount, reason=reason,
             recipient_name=recipient_name, iban=iban, bic=bic,
@@ -948,7 +956,7 @@ class FinTS3Client:
             time_unit if time_unit is not None else details.time_unit,
             interval if interval is not None else details.interval,
             execution_day if execution_day is not None else details.execution_day,
-            last_execution_date=last_execution_date if last_execution_date is not None else details.last_execution_date,
+            last_execution_date=last_execution_date,
             execution_date=execution_date,
         )
 

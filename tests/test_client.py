@@ -372,6 +372,23 @@ def test_change_standing_order_custom_pain(fints_client):
         assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER2 geändert 30.00 20250215:M:3:15:20270431'
 
 
+def test_change_standing_order_remove_last_execution_date(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        res = fints_client.simple_change_standing_order(accounts[0], standing_orders[1], remove_last_execution_date=True)
+
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER2 geändert 25.50 20250215:M:3:15'
+
+        with pytest.raises(ValueError):
+            fints_client.simple_change_standing_order(
+                accounts[0], standing_orders[1], last_execution_date=datetime.date(2030, 1, 15),
+                remove_last_execution_date=True,
+            )
+
+
 def test_change_standing_order_unchanged_details_omitted(fints_client):
     with fints_client:
         accounts = fints_client.get_sepa_accounts()
