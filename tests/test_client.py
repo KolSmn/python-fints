@@ -296,6 +296,26 @@ def test_create_standing_order(fints_client):
         assert res.data['task_id'] == 'ORDER3'
 
 
+def test_create_standing_order_custom_pain(fints_client):
+    from sepaxml import SepaTransfer
+
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+
+        sepa = SepaTransfer({'name': 'Test Sender', 'IBAN': accounts[0].iban, 'BIC': accounts[0].bic,
+                             'batch': False, 'currency': 'EUR'}, 'pain.001.001.03')
+        sepa.add_payment({'name': 'Test Receiver', 'IBAN': 'DE111234567800000002', 'amount': 123,
+                          'execution_date': datetime.date(1999, 1, 1), 'description': 'Test standing order'})
+
+        # sepaxml exports bytes, which are accepted as well as str
+        res = fints_client.create_standing_order(
+            accounts[0], sepa.export(), datetime.date(2030, 1, 15), StandingOrderTimeUnit1.MONTHLY, 1, 15,
+        )
+
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].text == 'SEPA-Dauerauftrag eingerichtet 20300115:M:1:15'
+
+
 def test_create_standing_order_weekly_not_supported(fints_client):
     with fints_client:
         accounts = fints_client.get_sepa_accounts()

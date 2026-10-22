@@ -843,7 +843,7 @@ class FinTS3Client:
             last_execution_date=last_execution_date, pain_descriptor=pain_descriptor,
         )
 
-    def create_standing_order(self, account: SEPAAccount, pain_message: str, first_execution_date: datetime.date,
+    def create_standing_order(self, account: SEPAAccount, pain_message: str | bytes, first_execution_date: datetime.date,
                               time_unit: StandingOrderTimeUnit1, interval: int, execution_day: int,
                               last_execution_date: datetime.date = None,
                               pain_descriptor='urn:iso:std:iso:20022:tech:xsd:pain.001.001.03'):
@@ -851,8 +851,9 @@ class FinTS3Client:
         Custom SEPA standing order (Dauerauftrag).
 
         :param account: SEPAAccount to send the standing order from.
-        :param pain_message: SEPA PAIN message containing the transfer details. The requested execution date
-            in the message must be ``1999-01-01``, the schedule is given by the other parameters.
+        :param pain_message: SEPA PAIN message (``str`` or ``bytes``) containing the transfer details. The
+            requested execution date in the message must be ``1999-01-01``, the schedule is given by the other
+            parameters.
         :param first_execution_date: Date of the first execution
         :param time_unit: ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
         :param interval: Execute every ``interval`` months or weeks
@@ -870,10 +871,13 @@ class FinTS3Client:
                 return_parameter_segment=True
             )
 
+            if isinstance(pain_message, str):
+                pain_message = pain_message.encode()
+
             seg = hkcde(
                 account=hkcde._fields['account'].type.from_sepa_account(account),
                 sepa_descriptor=pain_descriptor,
-                sepa_pain_message=pain_message.encode(),
+                sepa_pain_message=pain_message,
                 standing_order_details=hkcde._fields['standing_order_details'].type(
                     first_execution_date=first_execution_date,
                     time_unit=time_unit,
@@ -948,7 +952,7 @@ class FinTS3Client:
             execution_date=execution_date,
         )
 
-    def change_standing_order(self, account: SEPAAccount, standing_order, pain_message,
+    def change_standing_order(self, account: SEPAAccount, standing_order, pain_message: str | bytes,
                               first_execution_date: datetime.date, time_unit: StandingOrderTimeUnit1,
                               interval: int, execution_day: int, last_execution_date: datetime.date = None,
                               execution_date: datetime.date = None):
