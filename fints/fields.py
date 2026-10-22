@@ -276,27 +276,22 @@ class DateField(FixedLengthMixin, NumericField):
         return super()._render_value(val)
 
 
-class VirtualDateField(FixedLengthMixin, NumericField):
+class VirtualDateField(DateField):
     type = 'vdat'
     _DOC_TYPE = VirtualDate
-    _FIXED_LENGTH = [8]
 
     def _parse_value(self, value):
         if isinstance(value, VirtualDate):
             return value
         if isinstance(value, datetime.date):
             return VirtualDate.from_date(value)
-        val = super()._parse_value(value)
+        # Skip DateField._parse_value, which only allows existing dates
+        val = super(DateField, self)._parse_value(value)
         val = str(val)
         retval = VirtualDate(int(val[0:4]), int(val[4:6]), int(val[6:8]))
         if not (1 <= retval.month <= 12 and 1 <= retval.day <= 31):
             raise ValueError("Invalid virtual date: {!r}".format(value))
         return retval
-
-    def _render_value(self, value):
-        val = "{:04d}{:02d}{:02d}".format(value.year, value.month, value.day)
-        val = int(val)
-        return super()._render_value(val)
 
 
 class TimeField(FixedLengthMixin, DigitsField):
