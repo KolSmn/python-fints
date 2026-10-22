@@ -13,6 +13,8 @@ Amount = namedtuple('Amount', 'amount currency')
 
 Transaction = namedtuple('Transaction', 'data')
 
+SEPATransferPayment = namedtuple('SEPATransferPayment', 'recipient_name iban bic amount reason endtoend_id')
+
 
 class VirtualDate(namedtuple('VirtualDate', 'year month day')):
     """Virtual date (FinTS format ``vdat``): Like a date, but every month may have 31 days,

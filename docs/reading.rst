@@ -90,7 +90,11 @@ You can fetch the SEPA standing orders ("Daueraufträge") of an account with the
 This method will return a list of ``HICDB1`` segments, one per standing order. The schedule is available in
 ``standing_order_details`` (see :class:`~fints.formals.StandingOrderDetails3`), a suspension, if any, in
 ``suspension`` (see :class:`~fints.formals.StandingOrderSuspension3`). Recipient, amount and purpose are contained in
-the SEPA pain.001 message in ``sepa_pain_message``, which you can parse e.g. with ``lxml``.
+the SEPA pain.001 message in ``sepa_pain_message``, which you can read with ``parse_sepa_transfer_pain``:
+
+.. autofunction:: fints.utils.parse_sepa_transfer_pain
+
+.. autoclass:: fints.models.SEPATransferPayment
 
 The first and last execution dates are *virtual dates*, which allow 31 days in every month (e.g. 2025-04-31 for a
 standing order executed on the last day of each month). They are returned as ``VirtualDate`` objects:
@@ -102,7 +106,7 @@ Example:
 
 .. code-block:: python
 
-    from lxml import etree
+    from fints.utils import parse_sepa_transfer_pain
 
     standing_orders = client.get_standing_orders(account)
     while isinstance(standing_orders, NeedTANResponse):
@@ -110,17 +114,10 @@ Example:
 
     for order in standing_orders:
         details = order.standing_order_details
+        payment = parse_sepa_transfer_pain(order.sepa_pain_message)
         print("Task ID:", order.task_id)
         print("First/last execution:", details.first_execution_date, details.last_execution_date)
         print("Interval:", details.interval, details.time_unit, "on day", details.execution_day)
-
-        # The pain.001 version depends on the bank, so match elements regardless of namespace
-        pain = etree.fromstring(order.sepa_pain_message)
-        for tx in pain.xpath('//*[local-name()="CdtTrfTxInf"]'):
-            def text(path):
-                found = tx.xpath('.//' + '/'.join('*[local-name()="{}"]'.format(p) for p in path.split('/')))
-                return found[0].text if found else None
-
-            print("Recipient:", text('Cdtr/Nm'), text('CdtrAcct/Id/IBAN'))
-            print("Amount:", text('Amt/InstdAmt'))
-            print("Purpose:", text('RmtInf/Ustrd'))
+        print("Recipient:", payment.recipient_name, payment.iban, payment.bic)
+        print("Amount:", payment.amount.amount, payment.amount.currency)
+        print("Purpose:", payment.reason)

@@ -15,7 +15,7 @@ import mt940.models
 from lxml import etree
 from sepaxml.utils import make_msg_id
 
-from .models import Holding
+from .models import Amount, Holding, SEPATransferPayment
 
 
 def mt940_to_array(data):
@@ -106,6 +106,50 @@ def modify_sepa_transfer_pain(pain_message, amount=None, reason=None, recipient_
         creation_time.text = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
     return etree.tostring(root, xml_declaration=True, encoding='UTF-8')
+
+
+def parse_sepa_transfer_pain(pain_message):
+    """
+    Read the payment of a SEPA pain.001 credit transfer message with exactly one payment, e.g. one returned by
+    ``get_standing_orders``. This is the counterpart to ``modify_sepa_transfer_pain``.
+
+    :param pain_message: pain.001 message as ``bytes`` or ``str``
+    :return: ``SEPATransferPayment`` object. Values that are missing in the message are ``None``.
+    """
+    if isinstance(pain_message, str):
+        pain_message = pain_message.encode('utf-8')
+    root = etree.fromstring(pain_message)
+
+    def find(node, path):
+        # Namespace-agnostic, since the pain.001 version depends on the bank
+        return node.xpath('./' + '/'.join('*[local-name()="{}"]'.format(p) for p in path.split('/')))
+
+    def text(node, path):
+        found = find(node, path)
+        return found[0].text.strip() if found and found[0].text else None
+
+    transactions = root.xpath('//*[local-name()="CdtTrfTxInf"]')
+    if len(transactions) != 1:
+        raise ValueError("Only pain messages with exactly one payment are supported.")
+    tx = transactions[0]
+
+    instructed_amount = find(tx, 'Amt/InstdAmt')
+    if instructed_amount and instructed_amount[0].text:
+        amount = Amount(decimal.Decimal(instructed_amount[0].text.strip()), instructed_amount[0].get('Ccy'))
+    else:
+        amount = None
+
+    purposes = [e.text.strip() for e in find(tx, 'RmtInf/Ustrd') if e.text]
+
+    return SEPATransferPayment(
+        recipient_name=text(tx, 'Cdtr/Nm'),
+        iban=text(tx, 'CdtrAcct/Id/IBAN'),
+        # pain.001.001.03 and the older German schemas use <BIC>, later versions use <BICFI>
+        bic=text(tx, 'CdtrAgt/FinInstnId/BIC') or text(tx, 'CdtrAgt/FinInstnId/BICFI'),
+        amount=amount,
+        reason=' '.join(purposes) or None,
+        endtoend_id=text(tx, 'PmtId/EndToEndId'),
+    )
 
 
 def classproperty(f):

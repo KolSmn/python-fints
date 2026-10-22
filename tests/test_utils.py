@@ -78,3 +78,30 @@ def test_modify_sepa_transfer_pain(version, bic_tag):
 
     with pytest.raises(ValueError):
         modify_sepa_transfer_pain(_make_pain(version, payments=2), amount=Decimal('1'))
+
+
+@pytest.mark.parametrize("version", ['pain.001.001.03', 'pain.001.001.09'])
+def test_parse_sepa_transfer_pain(version):
+    from decimal import Decimal
+    from fints.models import Amount
+    from fints.utils import modify_sepa_transfer_pain, parse_sepa_transfer_pain
+
+    payment = parse_sepa_transfer_pain(_make_pain(version))
+    assert payment.recipient_name == 'Test Receiver'
+    assert payment.iban == 'DE111234567800000002'
+    assert payment.bic == 'GENODE23X42'
+    assert payment.amount == Amount(Decimal('1.23'), 'EUR')
+    assert payment.reason == 'Old reason'
+    assert payment.endtoend_id == 'NOTPROVIDED'
+
+    # Reads back what modify_sepa_transfer_pain changed, also from a str
+    changed = modify_sepa_transfer_pain(_make_pain(version), amount=Decimal('30'), reason='New reason', bic='COBADEFFXXX')
+    payment = parse_sepa_transfer_pain(changed.decode())
+    assert payment.amount == Amount(Decimal('30.00'), 'EUR')
+    assert payment.reason == 'New reason'
+    assert payment.bic == 'COBADEFFXXX'
+
+    assert parse_sepa_transfer_pain(_make_pain(version, bic=None)).bic is None
+
+    with pytest.raises(ValueError):
+        parse_sepa_transfer_pain(_make_pain(version, payments=2))
