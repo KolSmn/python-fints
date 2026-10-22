@@ -192,6 +192,12 @@ def fints_server():
                         + "+{}+{}'".format(task_id, details).encode('us-ascii')
                     )
 
+            hkcdl = re.search(rb"'HKCDL:(\d+):1\+", message)
+            if hkcdl:
+                segno = hkcdl.group(1).decode('us-ascii')
+                task_id = re.search(rb"\+(ORDER\d+)\+", message).group(1).decode('us-ascii')
+                result.append("HIRMS::2:{}+0020::SEPA-Dauerauftrag {} gelöscht'".format(segno, task_id).encode('iso-8859-1'))
+
             hktan = re.search(rb"'HKTAN:(\d+):(\d+)\+2\+\+\+\+([^+]+)\+", message)
             if hktan:
                 segno = hktan.group(1).decode('us-ascii')

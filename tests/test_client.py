@@ -1,6 +1,7 @@
 from fints.client import FinTS3PinTanClient, TransactionResponse, NeedTANResponse, ResponseStatus, NeedRetryResponse
-from fints.exceptions import FinTSClientPINError, FinTSClientTemporaryAuthError
+from fints.exceptions import FinTSClientPINError, FinTSClientTemporaryAuthError, FinTSUnsupportedOperation
 from decimal import Decimal
+import datetime
 import pytest
 
 
@@ -243,3 +244,25 @@ def test_get_standing_orders(fints_client):
         assert standing_orders[1].suspension.annually_recurring is False
         assert standing_orders[1].suspension.suspension_end.isoformat() == '2025-11-30'
         assert standing_orders[1].task_cancelable is True
+
+
+def test_delete_standing_order(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        res = fints_client.delete_standing_order(accounts[0], standing_orders[0])
+
+        assert isinstance(res, TransactionResponse)
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].code == '0020'
+        assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER1 gelöscht'
+
+
+def test_delete_standing_order_scheduled_not_allowed(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        with pytest.raises(FinTSUnsupportedOperation):
+            fints_client.delete_standing_order(accounts[0], standing_orders[0], datetime.date(2030, 1, 1))

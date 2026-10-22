@@ -38,7 +38,7 @@ from .segments.depot import HKWPD5, HKWPD6
 from .segments.dialog import HIRMG2, HIRMS2, HISYN4, HKSYN3
 from .segments.journal import HKPRO3, HKPRO4
 from .segments.saldo import HKSAL5, HKSAL6, HKSAL7
-from .segments.standing_order import HKCDB1
+from .segments.standing_order import HKCDB1, HKCDL1
 from .segments.statement import DKKKU2, HKKAZ5, HKKAZ6, HKKAZ7, HKCAZ1, HKKAU2, HKKAU1, HKEKA3, HKEKA4, HKEKA5
 from .segments.transfer import HKCCM1, HKCCS1, HKIPZ1, HKIPM1
 from .types import SegmentSequence
@@ -773,6 +773,36 @@ class FinTS3Client:
             )
 
         return responses
+
+    def delete_standing_order(self, account: SEPAAccount, standing_order, execution_date: datetime.date = None):
+        """
+        Delete a SEPA standing order (Dauerauftrag).
+
+        :param account: SEPAAccount the standing order belongs to.
+        :param standing_order: HICDB object of the standing order, as returned by ``get_standing_orders``.
+        :param execution_date: Execution date from which on the standing order will no longer be executed.
+            Only allowed if the bank supports scheduled deletion. If not given, the deletion takes effect immediately.
+        :return: Returns either a NeedRetryResponse or TransactionResponse
+        """
+        with self._get_dialog() as dialog:
+            hicdls, hkcdl = self._find_highest_supported_command(
+                HKCDL1,
+                return_parameter_segment=True
+            )
+
+            if execution_date and not hicdls.parameter.scheduled_deletion_allowed:
+                raise FinTSUnsupportedOperation("Scheduled deletion not allowed by bank.")
+
+            seg = hkcdl(
+                account=hkcdl._fields['account'].type.from_sepa_account(account),
+                sepa_descriptor=standing_order.sepa_descriptor,
+                sepa_pain_message=standing_order.sepa_pain_message,
+                execution_date=execution_date,
+                task_id=standing_order.task_id,
+                standing_order_details=standing_order.standing_order_details,
+            )
+
+            return self._send_with_possible_retry(dialog, seg, self._continue_sepa_transfer)
 
     def get_status_protocol(self):
         with self._get_dialog() as dialog:

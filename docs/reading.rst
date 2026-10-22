@@ -76,6 +76,8 @@ This method will return a list of ``Holding`` objects:
 .. autoclass:: fints.models.Holding
 
 
+.. _standing-orders:
+
 Fetching standing orders
 ------------------------
 

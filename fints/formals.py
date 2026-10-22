@@ -1036,6 +1036,16 @@ class QueryStandingOrdersParameter1(DataElementGroup):
     max_number_responses_allowed = DataElementField(type='jn', _d="Eingabe Anzahl Einträge erlaubt")
 
 
+class DeleteStandingOrderParameter1(DataElementGroup):
+    """Parameter SEPA-Dauerauftrag löschen, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    min_advance_notice = DataElementField(type='num', max_length=4, _d="Minimale Vorlaufzeit")
+    max_advance_notice = DataElementField(type='num', max_length=4, _d="Maximale Vorlaufzeit")
+    scheduled_deletion_allowed = DataElementField(type='jn', _d="Löschung terminierbar")
+    send_task_data_required = DataElementField(type='jn', _d="Senden der Auftragsdaten erforderlich")
+
+
 class QueryCreditCardStatements2(DataElementGroup):
     """Parameter Kreditkartenumsätze anfordern, version 2
 

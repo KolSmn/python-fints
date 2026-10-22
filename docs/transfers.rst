@@ -102,3 +102,31 @@ Full example
         print(res.status)
         print(res.responses)
 
+
+
+Deleting standing orders
+------------------------
+
+You can delete a SEPA standing order ("Dauerauftrag") by passing one of the objects returned by
+``get_standing_orders`` (see :ref:`standing-orders`) to ``delete_standing_order``:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: delete_standing_order
+   :noindex:
+
+At any point, you might receive a `NeedTANResponse`.
+You should then enter a TAN, read our chapter :ref:`tans` to find out more.
+
+.. code-block:: python
+
+    standing_orders = client.get_standing_orders(account)
+    while isinstance(standing_orders, NeedTANResponse):
+        standing_orders = ask_for_tan(standing_orders)
+
+    order = standing_orders[0]
+    res = client.delete_standing_order(account, order)
+    while isinstance(res, NeedTANResponse):
+        res = ask_for_tan(res)
+
+    print(res.status)
+    print(res.responses)

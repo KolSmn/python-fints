@@ -1,7 +1,7 @@
 from ..fields import DataElementField, DataElementGroupField
 from ..formals import (
-    KTI1, QueryStandingOrdersParameter1, StandingOrderDetails3,
-    StandingOrderSuspension3, SupportedSEPAPainMessages1,
+    KTI1, DeleteStandingOrderParameter1, QueryStandingOrdersParameter1,
+    StandingOrderDetails3, StandingOrderSuspension3, SupportedSEPAPainMessages1,
 )
 from .base import FinTS3Segment, ParameterSegment
 
@@ -37,3 +37,22 @@ class HICDBS1(ParameterSegment):
 
     Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
     parameter = DataElementGroupField(type=QueryStandingOrdersParameter1, _d="Parameter SEPA-Dauerauftragsbestand")
+
+
+class HKCDL1(FinTS3Segment):
+    """SEPA-Dauerauftrag löschen, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
+    account = DataElementGroupField(type=KTI1, _d="Kontoverbindung international")
+    sepa_descriptor = DataElementField(type='an', max_length=256, required=False, _d="SEPA Descriptor")
+    sepa_pain_message = DataElementField(type='bin', required=False, _d="SEPA pain message")
+    execution_date = DataElementField(type='dat', required=False, _d="Ausführungsdatum")
+    task_id = DataElementField(type='an', max_length=99, required=False, _d="Auftragsidentifikation")
+    standing_order_details = DataElementGroupField(type=StandingOrderDetails3, _d="Dauerauftragsdetails")
+
+
+class HICDLS1(ParameterSegment):
+    """SEPA-Dauerauftrag löschen Parameter, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
+    parameter = DataElementGroupField(type=DeleteStandingOrderParameter1, _d="Parameter SEPA-Dauerauftrag löschen")
