@@ -22,7 +22,7 @@ from .formals import (
     StandingOrderTimeUnit1,
 )
 from .message import FinTSInstituteMessage
-from .models import SEPAAccount, Transaction
+from .models import SEPAAccount, Transaction, VirtualDate
 from .parser import FinTS3Serializer
 from .security import (
     PinTanDummyEncryptionMechanism, PinTanOneStepAuthenticationMechanism,
@@ -811,9 +811,9 @@ class FinTS3Client:
 
     def simple_create_standing_order(self, account: SEPAAccount, iban: str, bic: str,
                                      recipient_name: str, amount: Decimal, account_name: str, reason: str,
-                                     first_execution_date: datetime.date,
+                                     first_execution_date: datetime.date | VirtualDate,
                                      time_unit: StandingOrderTimeUnit1, interval: int, execution_day: int,
-                                     last_execution_date: datetime.date = None, endtoend_id='NOTPROVIDED'):
+                                     last_execution_date: datetime.date | VirtualDate = None, endtoend_id='NOTPROVIDED'):
         """
         Simple SEPA standing order (Dauerauftrag).
 
@@ -824,11 +824,13 @@ class FinTS3Client:
         :param amount: Amount as a ``Decimal``
         :param account_name: Sender account name
         :param reason: Transfer reason
-        :param first_execution_date: Date of the first execution
+        :param first_execution_date: Date of the first execution (``datetime.date``, or ``VirtualDate`` for days
+            beyond the end of the month, e.g. 2030-04-31)
         :param time_unit: ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
         :param interval: Execute every ``interval`` months or weeks
         :param execution_day: Day of the month (1-31) or of the week (1-7) to execute on
-        :param last_execution_date: Date of the last execution (defaults to ``None``, i.e. unlimited)
+        :param last_execution_date: Date of the last execution (``datetime.date`` or ``VirtualDate``, defaults to
+            ``None``, i.e. unlimited)
         :param endtoend_id: End-to-end-Id (defaults to ``NOTPROVIDED``)
         :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
             (with data['task_id'] set, if available). Banks are not required to return the task id
@@ -843,9 +845,10 @@ class FinTS3Client:
             last_execution_date=last_execution_date, pain_descriptor=pain_descriptor,
         )
 
-    def create_standing_order(self, account: SEPAAccount, pain_message: str | bytes, first_execution_date: datetime.date,
+    def create_standing_order(self, account: SEPAAccount, pain_message: str | bytes,
+                              first_execution_date: datetime.date | VirtualDate,
                               time_unit: StandingOrderTimeUnit1, interval: int, execution_day: int,
-                              last_execution_date: datetime.date = None,
+                              last_execution_date: datetime.date | VirtualDate = None,
                               pain_descriptor='urn:iso:std:iso:20022:tech:xsd:pain.001.001.03'):
         """
         Custom SEPA standing order (Dauerauftrag).
@@ -854,11 +857,13 @@ class FinTS3Client:
         :param pain_message: SEPA PAIN message (``str`` or ``bytes``) containing the transfer details. The
             requested execution date in the message must be ``1999-01-01``, the schedule is given by the other
             parameters.
-        :param first_execution_date: Date of the first execution
+        :param first_execution_date: Date of the first execution (``datetime.date``, or ``VirtualDate`` for days
+            beyond the end of the month, e.g. 2030-04-31)
         :param time_unit: ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
         :param interval: Execute every ``interval`` months or weeks
         :param execution_day: Day of the month (1-31) or of the week (1-7) to execute on
-        :param last_execution_date: Date of the last execution (defaults to ``None``, i.e. unlimited)
+        :param last_execution_date: Date of the last execution (``datetime.date`` or ``VirtualDate``, defaults to
+            ``None``, i.e. unlimited)
         :param pain_descriptor: URN of the PAIN message schema used.
         :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
             (with data['task_id'] set, if available). Banks are not required to return the task id
@@ -908,9 +913,9 @@ class FinTS3Client:
 
     def simple_change_standing_order(self, account: SEPAAccount, standing_order, amount: Decimal = None,
                                      reason: str = None, recipient_name: str = None, iban: str = None,
-                                     bic: str = None, first_execution_date: datetime.date = None,
+                                     bic: str = None, first_execution_date: datetime.date | VirtualDate = None,
                                      time_unit: StandingOrderTimeUnit1 = None, interval: int = None,
-                                     execution_day: int = None, last_execution_date: datetime.date = None,
+                                     execution_day: int = None, last_execution_date: datetime.date | VirtualDate = None,
                                      remove_last_execution_date: bool = False, execution_date: datetime.date = None):
         """
         Simple change of a SEPA standing order (Dauerauftrag).
@@ -926,11 +931,12 @@ class FinTS3Client:
         :param recipient_name: New recipient name
         :param iban: New recipient IBAN. If no ``bic`` is given, an existing recipient BIC is removed.
         :param bic: New recipient BIC
-        :param first_execution_date: New date of the first execution
+        :param first_execution_date: New date of the first execution (``datetime.date``, or ``VirtualDate`` for
+            days beyond the end of the month, e.g. 2030-04-31)
         :param time_unit: New time unit, ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
         :param interval: New interval (every ``interval`` months or weeks)
         :param execution_day: New day of the month (1-31) or of the week (1-7) to execute on
-        :param last_execution_date: New date of the last execution
+        :param last_execution_date: New date of the last execution (``datetime.date`` or ``VirtualDate``)
         :param remove_last_execution_date: Remove the date of the last execution, i.e. make the standing order
             unlimited (defaults to ``False``). Cannot be combined with ``last_execution_date``.
         :param execution_date: Execution date from which on the change applies. Only allowed if the bank
@@ -961,8 +967,8 @@ class FinTS3Client:
         )
 
     def change_standing_order(self, account: SEPAAccount, standing_order, pain_message: str | bytes,
-                              first_execution_date: datetime.date, time_unit: StandingOrderTimeUnit1,
-                              interval: int, execution_day: int, last_execution_date: datetime.date = None,
+                              first_execution_date: datetime.date | VirtualDate, time_unit: StandingOrderTimeUnit1,
+                              interval: int, execution_day: int, last_execution_date: datetime.date | VirtualDate = None,
                               execution_date: datetime.date = None):
         """
         Custom change of a SEPA standing order (Dauerauftrag).
@@ -972,11 +978,13 @@ class FinTS3Client:
         :param pain_message: Complete new SEPA PAIN message (``str`` or ``bytes``). It must use the same schema
             as the pain message of the standing order (``standing_order.sepa_descriptor``), and its requested
             execution date must be ``1999-01-01``.
-        :param first_execution_date: Date of the first execution
+        :param first_execution_date: Date of the first execution (``datetime.date``, or ``VirtualDate`` for days
+            beyond the end of the month, e.g. 2030-04-31)
         :param time_unit: ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
         :param interval: Execute every ``interval`` months or weeks
         :param execution_day: Day of the month (1-31) or of the week (1-7) to execute on
-        :param last_execution_date: Date of the last execution (defaults to ``None``, i.e. unlimited)
+        :param last_execution_date: Date of the last execution (``datetime.date`` or ``VirtualDate``, defaults to
+            ``None``, i.e. unlimited)
         :param execution_date: Execution date from which on the change applies. Only allowed if the bank
             supports scheduled changes. If not given, the change applies from the next execution on.
         :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse

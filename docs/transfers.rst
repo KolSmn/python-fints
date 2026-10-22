@@ -118,6 +118,10 @@ and the execution day (day of the month or of the week):
 .. autoclass:: fints.formals.StandingOrderTimeUnit1
    :noindex:
 
+The first and last execution dates can be given as ``datetime.date`` or as ``VirtualDate`` (see
+:ref:`standing-orders`). A virtual date also allows days beyond the end of the month, e.g.
+``VirtualDate(2030, 4, 31)`` as first execution of a standing order executed on the 31st of each month.
+
 If you want to supply your own SEPA XML, use ``create_standing_order``. The requested execution date
 (``ReqdExctnDt``) in the pain message must be ``1999-01-01``, as for a simple transfer:
 
