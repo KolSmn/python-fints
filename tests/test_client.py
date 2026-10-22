@@ -314,3 +314,62 @@ def test_create_standing_order_weekly_not_supported(fints_client):
                 1,
                 1,
             )
+
+
+def test_change_standing_order(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        res = fints_client.simple_change_standing_order(
+            accounts[0], standing_orders[0], amount=Decimal('900'), execution_day=15,
+        )
+
+        assert isinstance(res, TransactionResponse)
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER1 geändert 900.00 20250101:M:1:15'
+        assert res.data['task_id'] == 'ORDER1B'
+        assert res.data['task_id_old'] == 'ORDER1'
+
+
+def test_change_standing_order_custom_pain(fints_client):
+    from fints.utils import modify_sepa_transfer_pain
+
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+        order = standing_orders[1]
+        details = order.standing_order_details
+
+        pain = modify_sepa_transfer_pain(order.sepa_pain_message, amount=Decimal('30')).decode()
+        res = fints_client.change_standing_order(
+            accounts[0], order, pain,
+            details.first_execution_date, details.time_unit, details.interval, details.execution_day,
+            last_execution_date=details.last_execution_date,
+        )
+
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER2 geändert 30.00 20250215:M:3:15:20270431'
+
+
+def test_change_standing_order_unchanged_details_omitted(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+        # Banks allowing several scheduled changes must not receive unchanged, changeable details
+        fints_client.bpd.find_segment_first('HICDNS').parameter.max_scheduled_changes = 2
+
+        res = fints_client.simple_change_standing_order(accounts[0], standing_orders[0], amount=Decimal('900'))
+
+        assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER1 geändert 900.00 '
+
+
+def test_change_standing_order_scheduled_not_allowed(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        with pytest.raises(FinTSUnsupportedOperation):
+            fints_client.simple_change_standing_order(
+                accounts[0], standing_orders[0], amount=Decimal('900'), execution_date=datetime.date(2030, 1, 1),
+            )

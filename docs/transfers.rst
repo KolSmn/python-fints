@@ -134,7 +134,8 @@ of the final ``TransactionResponse``.
    Returning the task id (Auftragsidentifikation) on creation is optional for banks, and many banks do not do it:
    ``data['task_id']`` is then not set, even though the standing order was created successfully (e.g. response code
    ``0010 Auftrag entgegengenommen``). In this case, call ``get_standing_orders`` afterwards to obtain the task id
-   of the new standing order. You need it for example to delete the standing order later on.
+   of the new standing order. You need it for example to delete the standing order later on. As with changes (see
+   below), it may take a while until the new standing order shows up there.
 
 .. code-block:: python
 
@@ -160,6 +161,53 @@ of the final ``TransactionResponse``.
             res = client.approve_vop_response(res)
 
     print(res.status, res.data.get('task_id'))
+
+
+Changing standing orders
+------------------------
+
+To change a SEPA standing order, pass one of the objects returned by ``get_standing_orders`` (see
+:ref:`standing-orders`) together with the values to change. All values that are not given are kept:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: simple_change_standing_order
+   :noindex:
+
+Which values may be changed is decided by the bank. The bank may assign a new task id to the changed standing order,
+it is returned in ``data['task_id']`` (and the previous one in ``data['task_id_old']``) of the final
+``TransactionResponse`` if the bank reports it. Otherwise, call ``get_standing_orders`` again to obtain it.
+
+.. note::
+
+   Banks may process changes asynchronously, especially if they answer with response code
+   ``0010 Auftrag entgegengenommen`` (order accepted) instead of ``0020`` (order executed). It can then take a while
+   until the change is visible in online banking and in ``get_standing_orders``. In the meantime, the standing order
+   may even be missing completely from ``get_standing_orders`` for a minute or so. Wait a bit before fetching the
+   standing orders again, and do not submit the change a second time.
+
+.. code-block:: python
+
+    standing_orders = client.get_standing_orders(account)
+    order = standing_orders[0]
+
+    res = client.simple_change_standing_order(account, order, amount=Decimal('30.00'), execution_day=15)
+    while isinstance(res, (NeedTANResponse, NeedVOPResponse)):
+        if isinstance(res, NeedTANResponse):
+            res = ask_for_tan(res)
+        else:
+            res = client.approve_vop_response(res)
+
+    print(res.status, res.data.get('task_id'))
+
+If you want to supply your own SEPA XML, use ``change_standing_order``. The bank requires the complete new pain
+message in the same schema as the pain message of the existing standing order (``order.sepa_descriptor``). To change
+single values of the existing pain message while keeping its schema, you can use ``modify_sepa_transfer_pain``:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: change_standing_order
+   :noindex:
+
+.. autofunction:: fints.utils.modify_sepa_transfer_pain
 
 
 Deleting standing orders

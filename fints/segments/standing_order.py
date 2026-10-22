@@ -1,8 +1,8 @@
 from ..fields import DataElementField, DataElementGroupField
 from ..formals import (
-    KTI1, CreateStandingOrderParameter1, DeleteStandingOrderParameter1,
-    QueryStandingOrdersParameter1, StandingOrderDetails3,
-    StandingOrderSuspension3, SupportedSEPAPainMessages1,
+    KTI1, ChangeStandingOrderParameter1, CreateStandingOrderParameter1,
+    DeleteStandingOrderParameter1, QueryStandingOrdersParameter1,
+    StandingOrderDetails3, StandingOrderSuspension3, SupportedSEPAPainMessages1,
 )
 from .base import FinTS3Segment, ParameterSegment
 
@@ -81,3 +81,30 @@ class HICDES1(ParameterSegment):
 
     Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
     parameter = DataElementGroupField(type=CreateStandingOrderParameter1, _d="Parameter SEPA-Dauerauftrag einrichten")
+
+
+class HKCDN1(FinTS3Segment):
+    """SEPA-Dauerauftrag ändern, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
+    account = DataElementGroupField(type=KTI1, _d="Kontoverbindung international")
+    sepa_descriptor = DataElementField(type='an', max_length=256, _d="SEPA Descriptor")
+    sepa_pain_message = DataElementField(type='bin', _d="SEPA pain message")
+    execution_date = DataElementField(type='dat', required=False, _d="Ausführungsdatum")
+    task_id = DataElementField(type='an', max_length=99, required=False, _d="Auftragsidentifikation")
+    standing_order_details = DataElementGroupField(type=StandingOrderDetails3, required=False, _d="Dauerauftragsdetails")
+
+
+class HICDN1(FinTS3Segment):
+    """SEPA-Dauerauftragsänderung bestätigen, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
+    task_id = DataElementField(type='an', max_length=99, _d="Auftragsidentifikation")
+    task_id_old = DataElementField(type='an', max_length=99, required=False, _d="Auftragsidentifikation alt")
+
+
+class HICDNS1(ParameterSegment):
+    """SEPA-Dauerauftrag ändern Parameter, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Messages -- Multibankfähige Geschäftsvorfälle """
+    parameter = DataElementGroupField(type=ChangeStandingOrderParameter1, _d="Parameter SEPA-Dauerauftrag ändern")

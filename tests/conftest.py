@@ -208,6 +208,20 @@ def fints_server():
                 else:
                     result.append("HIRMS::2:{}+9150::Ausführungsdatum darf nicht belegt werden'".format(segno).encode('iso-8859-1'))
 
+            hkcdn = re.search(rb"'HKCDN:(\d+):1\+.*@\d+@(.*</Document>)\+([^']*)'", message, re.DOTALL)
+            if hkcdn:
+                segno = hkcdn.group(1).decode('us-ascii')
+                pain = hkcdn.group(2).decode('utf-8')
+                fields = hkcdn.group(3).decode('us-ascii').split('+') + ['', '']
+                task_id, details = fields[1], fields[2].replace(':', '?:')
+                amount = re.search(r"<InstdAmt[^>]*>([^<]+)</InstdAmt>", pain).group(1)
+                if set(re.findall(r"<CtrlSum>([^<]+)</CtrlSum>", pain)) <= {amount}:
+                    result.append("HIRMS::2:{}+0020::SEPA-Dauerauftrag {} geändert {} {}'".format(
+                        segno, task_id, amount, details).encode('iso-8859-1'))
+                    result.append("HICDN::1:{}+{}B+{}'".format(segno, task_id, task_id).encode('us-ascii'))
+                else:
+                    result.append("HIRMS::2:{}+9010::Auftrag inkonsistent'".format(segno).encode('iso-8859-1'))
+
             hktan = re.search(rb"'HKTAN:(\d+):(\d+)\+2\+\+\+\+([^+]+)\+", message)
             if hktan:
                 segno = hktan.group(1).decode('us-ascii')

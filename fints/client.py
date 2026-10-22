@@ -39,13 +39,13 @@ from .segments.depot import HKWPD5, HKWPD6
 from .segments.dialog import HIRMG2, HIRMS2, HISYN4, HKSYN3
 from .segments.journal import HKPRO3, HKPRO4
 from .segments.saldo import HKSAL5, HKSAL6, HKSAL7
-from .segments.standing_order import HICDE1, HKCDB1, HKCDE1, HKCDL1
+from .segments.standing_order import HICDE1, HICDN1, HKCDB1, HKCDE1, HKCDL1, HKCDN1
 from .segments.statement import DKKKU2, HKKAZ5, HKKAZ6, HKKAZ7, HKCAZ1, HKKAU2, HKKAU1, HKEKA3, HKEKA4, HKEKA5
 from .segments.transfer import HKCCM1, HKCCS1, HKIPZ1, HKIPM1
 from .types import SegmentSequence
 from .utils import (
     MT535_Miniparser, Password, SubclassesMixin,
-    compress_datablob, decompress_datablob, mt940_to_array,
+    compress_datablob, decompress_datablob, modify_sepa_transfer_pain, mt940_to_array,
 )
 
 logger = logging.getLogger(__name__)
@@ -895,6 +895,138 @@ class FinTS3Client:
         for seg in response.find_segments(HICDE1):
             if seg.task_id:
                 retval.data['task_id'] = seg.task_id
+
+        return retval
+
+    def simple_change_standing_order(self, account: SEPAAccount, standing_order, amount: Decimal = None,
+                                     reason: str = None, recipient_name: str = None, iban: str = None,
+                                     bic: str = None, first_execution_date: datetime.date = None,
+                                     time_unit: StandingOrderTimeUnit1 = None, interval: int = None,
+                                     execution_day: int = None, last_execution_date: datetime.date = None,
+                                     execution_date: datetime.date = None):
+        """
+        Simple change of a SEPA standing order (Dauerauftrag).
+
+        Only the given values are changed, all values that are ``None`` are kept. The SEPA pain message of the
+        standing order is changed accordingly, keeping its schema (see ``modify_sepa_transfer_pain``).
+        Which values may be changed is decided by the bank.
+
+        :param account: SEPAAccount the standing order belongs to.
+        :param standing_order: HICDB object of the standing order, as returned by ``get_standing_orders``.
+        :param amount: New amount as a ``Decimal``
+        :param reason: New transfer reason
+        :param recipient_name: New recipient name
+        :param iban: New recipient IBAN. If no ``bic`` is given, an existing recipient BIC is removed.
+        :param bic: New recipient BIC
+        :param first_execution_date: New date of the first execution
+        :param time_unit: New time unit, ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
+        :param interval: New interval (every ``interval`` months or weeks)
+        :param execution_day: New day of the month (1-31) or of the week (1-7) to execute on
+        :param last_execution_date: New date of the last execution
+        :param execution_date: Execution date from which on the change applies. Only allowed if the bank
+            supports scheduled changes. If not given, the change applies from the next execution on.
+        :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
+            (with data['task_id'] and data['task_id_old'] set, if available). Banks may process the change
+            asynchronously, so it can take a while until it is visible in ``get_standing_orders``.
+        """
+        details = standing_order.standing_order_details
+        pain_message = modify_sepa_transfer_pain(
+            standing_order.sepa_pain_message, amount=amount, reason=reason,
+            recipient_name=recipient_name, iban=iban, bic=bic,
+        )
+        return self.change_standing_order(
+            account, standing_order, pain_message,
+            first_execution_date if first_execution_date is not None else details.first_execution_date,
+            time_unit if time_unit is not None else details.time_unit,
+            interval if interval is not None else details.interval,
+            execution_day if execution_day is not None else details.execution_day,
+            last_execution_date=last_execution_date if last_execution_date is not None else details.last_execution_date,
+            execution_date=execution_date,
+        )
+
+    def change_standing_order(self, account: SEPAAccount, standing_order, pain_message,
+                              first_execution_date: datetime.date, time_unit: StandingOrderTimeUnit1,
+                              interval: int, execution_day: int, last_execution_date: datetime.date = None,
+                              execution_date: datetime.date = None):
+        """
+        Custom change of a SEPA standing order (Dauerauftrag).
+
+        :param account: SEPAAccount the standing order belongs to.
+        :param standing_order: HICDB object of the standing order, as returned by ``get_standing_orders``.
+        :param pain_message: Complete new SEPA PAIN message (``str`` or ``bytes``). It must use the same schema
+            as the pain message of the standing order (``standing_order.sepa_descriptor``), and its requested
+            execution date must be ``1999-01-01``.
+        :param first_execution_date: Date of the first execution
+        :param time_unit: ``StandingOrderTimeUnit1.MONTHLY`` or ``StandingOrderTimeUnit1.WEEKLY``
+        :param interval: Execute every ``interval`` months or weeks
+        :param execution_day: Day of the month (1-31) or of the week (1-7) to execute on
+        :param last_execution_date: Date of the last execution (defaults to ``None``, i.e. unlimited)
+        :param execution_date: Execution date from which on the change applies. Only allowed if the bank
+            supports scheduled changes. If not given, the change applies from the next execution on.
+        :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
+            (with data['task_id'] and data['task_id_old'] set, if available). The bank may assign a new
+            task id to the changed standing order. Banks may process the change asynchronously, so it can
+            take a while until it is visible in ``get_standing_orders``; in the meantime, the standing order
+            may be missing there completely.
+        """
+        with self._get_dialog() as dialog:
+            hicdns, hkcdn = self._find_highest_supported_command(
+                HKCDN1,
+                return_parameter_segment=True
+            )
+            parameter = hicdns.parameter
+
+            if execution_date and not parameter.max_scheduled_changes:
+                raise FinTSUnsupportedOperation("Scheduled changes not allowed by bank.")
+
+            if isinstance(pain_message, str):
+                pain_message = pain_message.encode()
+
+            seg = hkcdn(
+                account=hkcdn._fields['account'].type.from_sepa_account(account),
+                sepa_descriptor=standing_order.sepa_descriptor,
+                sepa_pain_message=pain_message,
+                execution_date=execution_date,
+                task_id=standing_order.task_id,
+                standing_order_details=hkcdn._fields['standing_order_details'].type(
+                    first_execution_date=first_execution_date,
+                    time_unit=time_unit,
+                    interval=interval,
+                    execution_day=execution_day,
+                    last_execution_date=last_execution_date,
+                ),
+            )
+
+            # If the bank allows more than one scheduled change, changeable details must only be sent
+            # if they are changed.
+            details_changeable = any((
+                parameter.first_execution_date_changeable, parameter.time_unit_changeable,
+                parameter.interval_changeable, parameter.execution_day_changeable,
+                parameter.last_execution_date_changeable,
+            ))
+            old_details = standing_order.standing_order_details
+            details_changed = any(
+                getattr(seg.standing_order_details, name) != getattr(old_details, name)
+                for name in seg.standing_order_details._fields
+            )
+            if parameter.max_scheduled_changes > 1 and details_changeable and not details_changed:
+                seg.standing_order_details = None
+
+            return self._send_pay_with_possible_retry(dialog, seg, self._continue_change_standing_order)
+
+    def _continue_change_standing_order(self, command_seg, response):
+        retval = TransactionResponse(response)
+
+        for seg in response.find_segments(HIRMS2):
+            for resp in seg.responses:
+                retval.set_status_if_higher(_RESPONSE_STATUS_MAPPING.get(resp.code[0], ResponseStatus.UNKNOWN))
+                retval.responses.append(resp)
+
+        for seg in response.find_segments(HICDN1):
+            if seg.task_id:
+                retval.data['task_id'] = seg.task_id
+            if seg.task_id_old:
+                retval.data['task_id_old'] = seg.task_id_old
 
         return retval
 

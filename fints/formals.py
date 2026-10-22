@@ -1059,6 +1059,28 @@ class CreateStandingOrderParameter1(DataElementGroup):
     execution_days_week = DataElementField(type='dig', max_length=7, required=False, _d="Ausführungstage pro Woche")
 
 
+class ChangeStandingOrderParameter1(DataElementGroup):
+    """Parameter SEPA-Dauerauftrag ändern, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    max_scheduled_changes = DataElementField(type='num', length=1, _d="Anzahl terminierter Änderungen")
+    min_advance_notice = DataElementField(type='num', max_length=4, _d="Minimale Vorlaufzeit")
+    max_advance_notice = DataElementField(type='num', max_length=4, _d="Maximale Vorlaufzeit")
+    creditor_account_changeable = DataElementField(type='jn', _d="CreditorAccount/Agent änderbar")
+    creditor_changeable = DataElementField(type='jn', _d="Creditor änderbar")
+    amount_changeable = DataElementField(type='jn', _d="InstructedAmount änderbar")
+    purpose_changeable = DataElementField(type='jn', _d="RemittanceInformation änderbar")
+    first_execution_date_changeable = DataElementField(type='jn', _d="Erstes Ausführungsdatum änderbar")
+    time_unit_changeable = DataElementField(type='jn', _d="Zeiteinheit änderbar")
+    interval_changeable = DataElementField(type='jn', _d="Turnus änderbar")
+    execution_day_changeable = DataElementField(type='jn', _d="Ausführungstag änderbar")
+    last_execution_date_changeable = DataElementField(type='jn', _d="Letztes Ausführungsdatum änderbar")
+    months = DataElementField(type='dig', max_length=24, _d="Turnus in Monaten")
+    execution_days_month = DataElementField(type='dig', max_length=64, _d="Ausführungstage pro Monat")
+    weeks = DataElementField(type='dig', max_length=104, required=False, _d="Turnus in Wochen")
+    execution_days_week = DataElementField(type='dig', max_length=7, required=False, _d="Ausführungstage pro Woche")
+
+
 class QueryCreditCardStatements2(DataElementGroup):
     """Parameter Kreditkartenumsätze anfordern, version 2
 
