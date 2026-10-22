@@ -1011,11 +1011,11 @@ class StandingOrderDetails3(DataElementGroup):
     """Dauerauftragsdetails, version 3
 
     Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
-    first_execution_date = DataElementField(type='dat', _d="Erstmals ausführen am")
+    first_execution_date = DataElementField(type='vdat', _d="Erstmals ausführen am")
     time_unit = CodeField(enum=StandingOrderTimeUnit1, length=1, _d="Zeiteinheit")
     interval = DataElementField(type='num', max_length=2, _d="Turnus")
     execution_day = DataElementField(type='num', max_length=2, _d="Ausführungstag")
-    last_execution_date = DataElementField(type='dat', required=False, _d="Letztmals ausführen am")
+    last_execution_date = DataElementField(type='vdat', required=False, _d="Letztmals ausführen am")
 
 
 class StandingOrderSuspension3(DataElementGroup):

@@ -88,7 +88,15 @@ You can fetch the SEPA standing orders ("Daueraufträge") of an account with the
 This method will return a list of ``HICDB1`` segments, one per standing order. The schedule is available in
 ``standing_order_details`` (see :class:`~fints.formals.StandingOrderDetails3`), a suspension, if any, in
 ``suspension`` (see :class:`~fints.formals.StandingOrderSuspension3`). Recipient, amount and purpose are contained in
-the SEPA pain.001 message in ``sepa_pain_message``, which you can parse e.g. with ``lxml``:
+the SEPA pain.001 message in ``sepa_pain_message``, which you can parse e.g. with ``lxml``.
+
+The first and last execution dates are *virtual dates*, which allow 31 days in every month (e.g. 2025-04-31 for a
+standing order executed on the last day of each month). They are returned as ``VirtualDate`` objects:
+
+.. autoclass:: fints.models.VirtualDate
+   :members: to_date
+
+Example:
 
 .. code-block:: python
 

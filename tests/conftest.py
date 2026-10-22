@@ -172,7 +172,7 @@ def fints_server():
                 segno = hkcdb.group(1).decode('us-ascii')
                 standing_orders = [
                     ('ORDER1', 'Max Vermieter', 'DE02120300000000202051', '850.00', 'Miete', '20250101:M:1:1++J+J+J'),
-                    ('ORDER2', 'Sportverein', 'DE02500105170137075030', '25.50', 'Beitrag', '20250215:M:3:15:20271231+N:20251101:20251130::0,:EUR+N+N+J'),
+                    ('ORDER2', 'Sportverein', 'DE02500105170137075030', '25.50', 'Beitrag', '20250215:M:3:15:20270431+N:20251101:20251130::0,:EUR+N+N+J'),
                 ]
                 for task_id, name, iban, amount, reason, details in standing_orders:
                     pain = (

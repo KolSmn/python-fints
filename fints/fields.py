@@ -3,6 +3,7 @@ import decimal
 import re
 import warnings
 
+from fints.models import VirtualDate
 from fints.types import Container, SegmentSequence, TypedField
 from fints.utils import (
     DocTypeMixin, FieldRenderFormatStringMixin, FixedLengthMixin, Password,
@@ -268,6 +269,29 @@ class DateField(FixedLengthMixin, NumericField):
         val = super()._parse_value(value)
         val = str(val)
         return datetime.date(int(val[0:4]), int(val[4:6]), int(val[6:8]))
+
+    def _render_value(self, value):
+        val = "{:04d}{:02d}{:02d}".format(value.year, value.month, value.day)
+        val = int(val)
+        return super()._render_value(val)
+
+
+class VirtualDateField(FixedLengthMixin, NumericField):
+    type = 'vdat'
+    _DOC_TYPE = VirtualDate
+    _FIXED_LENGTH = [8]
+
+    def _parse_value(self, value):
+        if isinstance(value, VirtualDate):
+            return value
+        if isinstance(value, datetime.date):
+            return VirtualDate.from_date(value)
+        val = super()._parse_value(value)
+        val = str(val)
+        retval = VirtualDate(int(val[0:4]), int(val[4:6]), int(val[6:8]))
+        if not (1 <= retval.month <= 12 and 1 <= retval.day <= 31):
+            raise ValueError("Invalid virtual date: {!r}".format(value))
+        return retval
 
     def _render_value(self, value):
         val = "{:04d}{:02d}{:02d}".format(value.year, value.month, value.day)

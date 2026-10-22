@@ -239,6 +239,7 @@ def test_get_standing_orders(fints_client):
         assert standing_orders[0].task_id == 'ORDER1'
         assert standing_orders[0].standing_order_details.interval == 1
         assert b'Max Vermieter' in standing_orders[0].sepa_pain_message
+        assert str(standing_orders[1].standing_order_details.last_execution_date) == '2027-04-31'
         assert standing_orders[1].suspension.annually_recurring is False
         assert standing_orders[1].suspension.suspension_end.isoformat() == '2025-11-30'
         assert standing_orders[1].task_cancelable is True
