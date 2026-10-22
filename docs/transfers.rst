@@ -158,10 +158,10 @@ of the final ``TransactionResponse``.
         interval=1,
         execution_day=1,
     )
-    while isinstance(res, (NeedTANResponse, NeedVOPResponse)):
+    while isinstance(res, NeedTANResponse | NeedVOPResponse):
         if isinstance(res, NeedTANResponse):
             res = ask_for_tan(res)
-        else:
+        elif isinstance(res, NeedVOPResponse):
             res = client.approve_vop_response(res)
 
     print(res.status, res.data.get('task_id'))
@@ -193,13 +193,15 @@ it is returned in ``data['task_id']`` (and the previous one in ``data['task_id_o
 .. code-block:: python
 
     standing_orders = client.get_standing_orders(account)
-    order = standing_orders[0]
+    while isinstance(standing_orders, NeedTANResponse):
+        standing_orders = ask_for_tan(standing_orders)
 
+    order = standing_orders[0]
     res = client.simple_change_standing_order(account, order, amount=Decimal('30.00'), execution_day=15)
-    while isinstance(res, (NeedTANResponse, NeedVOPResponse)):
+    while isinstance(res, NeedTANResponse | NeedVOPResponse):
         if isinstance(res, NeedTANResponse):
             res = ask_for_tan(res)
-        else:
+        elif isinstance(res, NeedVOPResponse):
             res = client.approve_vop_response(res)
 
     print(res.status, res.data.get('task_id'))
