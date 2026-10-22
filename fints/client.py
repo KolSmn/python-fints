@@ -1016,6 +1016,9 @@ class FinTS3Client:
             if parameter.max_scheduled_changes > 1 and details_changeable and not details_changed:
                 seg.standing_order_details = None
 
+            if seg.standing_order_details and seg.standing_order_details.time_unit == StandingOrderTimeUnit1.WEEKLY and not parameter.weeks:
+                raise FinTSUnsupportedOperation("Weekly standing orders not supported by bank.")
+
             return self._send_pay_with_possible_retry(dialog, seg, self._continue_change_standing_order)
 
     def _continue_change_standing_order(self, command_seg, response):

@@ -364,6 +364,17 @@ def test_change_standing_order_unchanged_details_omitted(fints_client):
         assert res.responses[0].text == 'SEPA-Dauerauftrag ORDER1 geändert 900.00 '
 
 
+def test_change_standing_order_weekly_not_supported(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+        standing_orders = fints_client.get_standing_orders(accounts[0])
+
+        with pytest.raises(FinTSUnsupportedOperation):
+            fints_client.simple_change_standing_order(
+                accounts[0], standing_orders[0], time_unit=StandingOrderTimeUnit1.WEEKLY, execution_day=1,
+            )
+
+
 def test_change_standing_order_scheduled_not_allowed(fints_client):
     with fints_client:
         accounts = fints_client.get_sepa_accounts()
