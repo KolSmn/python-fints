@@ -1046,6 +1046,19 @@ class DeleteStandingOrderParameter1(DataElementGroup):
     send_task_data_required = DataElementField(type='jn', _d="Senden der Auftragsdaten erforderlich")
 
 
+class CreateStandingOrderParameter1(DataElementGroup):
+    """Parameter SEPA-Dauerauftrag einrichten, version 1
+
+    Source: FinTS Financial Transaction Services, Schnittstellenspezifikation, Data Dictionary """
+    max_purpose_lines = DataElementField(type='num', max_length=2, _d="Maximale Anzahl Verwendungszweckzeilen")
+    min_advance_notice = DataElementField(type='num', max_length=4, _d="Minimale Vorlaufzeit")
+    max_advance_notice = DataElementField(type='num', max_length=4, _d="Maximale Vorlaufzeit")
+    months = DataElementField(type='dig', max_length=24, _d="Turnus in Monaten")
+    execution_days_month = DataElementField(type='dig', max_length=64, _d="Ausführungstage pro Monat")
+    weeks = DataElementField(type='dig', max_length=104, required=False, _d="Turnus in Wochen")
+    execution_days_week = DataElementField(type='dig', max_length=7, required=False, _d="Ausführungstage pro Woche")
+
+
 class QueryCreditCardStatements2(DataElementGroup):
     """Parameter Kreditkartenumsätze anfordern, version 2
 

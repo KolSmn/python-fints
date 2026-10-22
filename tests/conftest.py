@@ -198,6 +198,16 @@ def fints_server():
                 task_id = re.search(rb"\+(ORDER\d+)\+", message).group(1).decode('us-ascii')
                 result.append("HIRMS::2:{}+0020::SEPA-Dauerauftrag {} gelöscht'".format(segno, task_id).encode('iso-8859-1'))
 
+            hkcde = re.search(rb"'HKCDE:(\d+):1\+.*@\d+@(.*</Document>)\+([^']+)'", message, re.DOTALL)
+            if hkcde:
+                segno = hkcde.group(1).decode('us-ascii')
+                details = hkcde.group(3).decode('us-ascii').replace(':', '?:')
+                if re.search(rb"<ReqdExctnDt>(<Dt>)?1999-01-01", hkcde.group(2)):
+                    result.append("HIRMS::2:{}+0020::SEPA-Dauerauftrag eingerichtet {}'".format(segno, details).encode('iso-8859-1'))
+                    result.append("HICDE::1:{}+ORDER3'".format(segno).encode('us-ascii'))
+                else:
+                    result.append("HIRMS::2:{}+9150::Ausführungsdatum darf nicht belegt werden'".format(segno).encode('iso-8859-1'))
+
             hktan = re.search(rb"'HKTAN:(\d+):(\d+)\+2\+\+\+\+([^+]+)\+", message)
             if hktan:
                 segno = hktan.group(1).decode('us-ascii')

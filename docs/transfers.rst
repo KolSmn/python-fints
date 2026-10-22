@@ -104,6 +104,64 @@ Full example
 
 
 
+Creating standing orders
+------------------------
+
+You can create a SEPA standing order ("Dauerauftrag") with the same convenience as a simple transfer. The schedule
+is given by the date of the first execution, the time unit (monthly or weekly), the interval (every n months or weeks)
+and the execution day (day of the month or of the week):
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: simple_create_standing_order
+   :noindex:
+
+.. autoclass:: fints.formals.StandingOrderTimeUnit1
+   :noindex:
+
+If you want to supply your own SEPA XML, use ``create_standing_order``. The requested execution date
+(``ReqdExctnDt``) in the pain message must be ``1999-01-01``, as for a simple transfer:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: create_standing_order
+   :noindex:
+
+As with transfers, the return value may be a `NeedVOPResponse` (call `approve_vop_response` to proceed) or a
+`NeedTANResponse`. If the bank assigns a task id to the new standing order, it is returned in ``data['task_id']``
+of the final ``TransactionResponse``.
+
+.. note::
+
+   Returning the task id (Auftragsidentifikation) on creation is optional for banks, and many banks do not do it:
+   ``data['task_id']`` is then not set, even though the standing order was created successfully (e.g. response code
+   ``0010 Auftrag entgegengenommen``). In this case, call ``get_standing_orders`` afterwards to obtain the task id
+   of the new standing order. You need it for example to delete the standing order later on.
+
+.. code-block:: python
+
+    from fints.formals import StandingOrderTimeUnit1
+
+    res = client.simple_create_standing_order(
+        account=account,
+        iban='DE89370400440532013000',
+        bic='COBADEFFXXX',
+        recipient_name='Max Mustermann',
+        amount=Decimal('25.00'),
+        account_name='Your name',
+        reason='Monthly rent',
+        first_execution_date=datetime.date(2030, 1, 1),
+        time_unit=StandingOrderTimeUnit1.MONTHLY,
+        interval=1,
+        execution_day=1,
+    )
+    while isinstance(res, (NeedTANResponse, NeedVOPResponse)):
+        if isinstance(res, NeedTANResponse):
+            res = ask_for_tan(res)
+        else:
+            res = client.approve_vop_response(res)
+
+    print(res.status, res.data.get('task_id'))
+
+
 Deleting standing orders
 ------------------------
 

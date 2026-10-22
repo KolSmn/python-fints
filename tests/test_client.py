@@ -1,5 +1,7 @@
 from fints.client import FinTS3PinTanClient, TransactionResponse, NeedTANResponse, ResponseStatus, NeedRetryResponse
 from fints.exceptions import FinTSClientPINError, FinTSClientTemporaryAuthError, FinTSUnsupportedOperation
+from fints.formals import StandingOrderTimeUnit1
+from fints.models import VirtualDate
 from decimal import Decimal
 import datetime
 import pytest
@@ -266,3 +268,49 @@ def test_delete_standing_order_scheduled_not_allowed(fints_client):
 
         with pytest.raises(FinTSUnsupportedOperation):
             fints_client.delete_standing_order(accounts[0], standing_orders[0], datetime.date(2030, 1, 1))
+
+
+def test_create_standing_order(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+
+        res = fints_client.simple_create_standing_order(
+            accounts[0],
+            'DE111234567800000002',
+            'GENODE23X42',
+            'Test Receiver',
+            Decimal('1.23'),
+            'Test Sender',
+            'Test standing order',
+            datetime.date(2030, 1, 31),
+            StandingOrderTimeUnit1.MONTHLY,
+            1,
+            31,
+            last_execution_date=VirtualDate(2030, 4, 31),
+        )
+
+        assert isinstance(res, TransactionResponse)
+        assert res.status == ResponseStatus.SUCCESS
+        assert res.responses[0].code == '0020'
+        assert res.responses[0].text == 'SEPA-Dauerauftrag eingerichtet 20300131:M:1:31:20300431'
+        assert res.data['task_id'] == 'ORDER3'
+
+
+def test_create_standing_order_weekly_not_supported(fints_client):
+    with fints_client:
+        accounts = fints_client.get_sepa_accounts()
+
+        with pytest.raises(FinTSUnsupportedOperation):
+            fints_client.simple_create_standing_order(
+                accounts[0],
+                'DE111234567800000002',
+                'GENODE23X42',
+                'Test Receiver',
+                Decimal('1.23'),
+                'Test Sender',
+                'Test standing order',
+                datetime.date(2030, 1, 7),
+                StandingOrderTimeUnit1.WEEKLY,
+                1,
+                1,
+            )
