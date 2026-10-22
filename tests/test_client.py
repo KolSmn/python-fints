@@ -248,6 +248,33 @@ def test_get_standing_orders(fints_client):
         assert standing_orders[1].task_cancelable is True
 
 
+def test_get_standing_order_parameters(fints_client):
+    with fints_client:
+        fints_client.get_sepa_accounts()
+
+    hicdes = fints_client.bpd.find_segment_first('HICDES').parameter
+    hicdes.months = '0102030612'
+    hicdes.weeks = '0102'
+    hicdes.execution_days_month = '01159899'
+    hicdes.execution_days_week = '12345'
+
+    parameters = fints_client.get_standing_order_parameters()
+
+    assert parameters['create'] == {
+        'months': [1, 2, 3, 6, 12],
+        'weeks': [1, 2],
+        'execution_days_month': [1, 15, 98, 99],
+        'execution_days_week': [1, 2, 3, 4, 5],
+        'min_advance_notice': 1,
+        'max_advance_notice': 3650,
+    }
+    # The test bank allows all intervals and days for changes, but no weekly standing orders
+    assert parameters['change']['months'] == list(range(1, 13))
+    assert parameters['change']['execution_days_month'] == list(range(1, 31)) + [97, 98, 99]
+    assert parameters['change']['weeks'] == []
+    assert parameters['change']['execution_days_week'] == []
+
+
 def test_delete_standing_order(fints_client):
     with fints_client:
         accounts = fints_client.get_sepa_accounts()

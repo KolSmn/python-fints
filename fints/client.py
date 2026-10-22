@@ -779,6 +779,60 @@ class FinTS3Client:
 
         return responses
 
+    def get_standing_order_parameters(self):
+        """
+        Return the values the bank allows for creating and changing SEPA standing orders (Daueraufträge), e.g. to
+        only offer allowed values to the user. The values are checked by the bank, not by this library.
+
+        Note: Can only be filled after the first communication with the bank.
+        If in doubt, use a construction like::
+
+            f = FinTS3Client(...)
+            with f:
+                parameters = f.get_standing_order_parameters()
+
+        Returns a nested dictionary::
+
+            create: (None if the bank does not support creating standing orders)
+                months: Allowed intervals in months, e.g. [1, 3, 6, 12]
+                weeks: Allowed intervals in weeks, [] if weekly standing orders are not supported
+                execution_days_month: Allowed days of the month, e.g. [1, 15, 99]. 97, 98 and 99 stand for the
+                    third to last, second to last and last day of the month, the 31st is given as 99.
+                execution_days_week: Allowed days of the week, 1 (Monday) to 7 (Sunday)
+                min_advance_notice: Minimum advance notice before the (next) execution in days
+                max_advance_notice: Maximum advance notice in days
+            change: (None if the bank does not support changing standing orders)
+                Same keys as create, the bank may allow different values for changes.
+
+        """
+        def allowed_values(value, width, all_values):
+            # The bank gives the allowed values as a chain of numbers with fixed width, 0 stands for all values
+            values = [int(value[i:i + width]) for i in range(0, len(value or ''), width)]
+            return list(all_values) if 0 in values else values
+
+        retval = {}
+        for key, command_class in (('create', HKCDE1), ('change', HKCDN1)):
+            try:
+                parameter_segment, _ = self._find_highest_supported_command(
+                    command_class,
+                    return_parameter_segment=True
+                )
+            except FinTSUnsupportedOperation:
+                retval[key] = None
+                continue
+
+            parameter = parameter_segment.parameter
+            retval[key] = {
+                'months': allowed_values(parameter.months, 2, range(1, 13)),
+                'weeks': allowed_values(parameter.weeks, 2, range(1, 53)),
+                'execution_days_month': allowed_values(parameter.execution_days_month, 2, [*range(1, 31), 97, 98, 99]),
+                'execution_days_week': allowed_values(parameter.execution_days_week, 1, range(1, 8)),
+                'min_advance_notice': parameter.min_advance_notice,
+                'max_advance_notice': parameter.max_advance_notice,
+            }
+
+        return retval
+
     def delete_standing_order(self, account: SEPAAccount, standing_order, execution_date: datetime.date = None):
         """
         Delete a SEPA standing order (Dauerauftrag).

@@ -122,6 +122,13 @@ The first and last execution dates can be given as ``datetime.date`` or as ``Vir
 :ref:`standing-orders`). A virtual date also allows days beyond the end of the month, e.g.
 ``VirtualDate(2030, 4, 31)`` as first execution of a standing order executed on the 31st of each month.
 
+Which intervals, execution days and advance notices the bank allows, e.g. to only offer allowed values to the user,
+can be found out with ``get_standing_order_parameters``:
+
+.. autoclass:: fints.client.FinTS3Client
+   :members: get_standing_order_parameters
+   :noindex:
+
 If you want to supply your own SEPA XML, use ``create_standing_order``. The requested execution date
 (``ReqdExctnDt``) in the pain message must be ``1999-01-01``, as for a simple transfer:
 
