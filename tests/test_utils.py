@@ -76,6 +76,10 @@ def test_modify_sepa_transfer_pain(version, bic_tag):
     try_valid_xml(changed, version)
     assert 'COBADEFFXXX' in values(changed, bic_tag)
 
+    changed = modify_sepa_transfer_pain(original, endtoend_id='NEW-E2E-ID')
+    try_valid_xml(changed, version)
+    assert values(changed, 'EndToEndId') == ['NEW-E2E-ID']
+
     with pytest.raises(ValueError):
         modify_sepa_transfer_pain(_make_pain(version, payments=2), amount=Decimal('1'))
 
@@ -95,11 +99,13 @@ def test_parse_sepa_transfer_pain(version):
     assert payment.endtoend_id == 'NOTPROVIDED'
 
     # Reads back what modify_sepa_transfer_pain changed, also from a str
-    changed = modify_sepa_transfer_pain(_make_pain(version), amount=Decimal('30'), reason='New reason', bic='COBADEFFXXX')
+    changed = modify_sepa_transfer_pain(_make_pain(version), amount=Decimal('30'), reason='New reason', bic='COBADEFFXXX',
+                                        endtoend_id='NEW-E2E-ID')
     payment = parse_sepa_transfer_pain(changed.decode())
     assert payment.amount == Amount(Decimal('30.00'), 'EUR')
     assert payment.reason == 'New reason'
     assert payment.bic == 'COBADEFFXXX'
+    assert payment.endtoend_id == 'NEW-E2E-ID'
 
     assert parse_sepa_transfer_pain(_make_pain(version, bic=None)).bic is None
 

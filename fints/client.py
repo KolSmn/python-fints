@@ -970,7 +970,8 @@ class FinTS3Client:
                                      bic: str = None, first_execution_date: datetime.date | VirtualDate = None,
                                      time_unit: StandingOrderTimeUnit1 = None, interval: int = None,
                                      execution_day: int = None, last_execution_date: datetime.date | VirtualDate = None,
-                                     remove_last_execution_date: bool = False, execution_date: datetime.date = None):
+                                     remove_last_execution_date: bool = False, execution_date: datetime.date = None,
+                                     endtoend_id: str = None):
         """
         Simple change of a SEPA standing order (Dauerauftrag).
 
@@ -995,6 +996,7 @@ class FinTS3Client:
             unlimited (defaults to ``False``). Cannot be combined with ``last_execution_date``.
         :param execution_date: Execution date from which on the change applies. Only allowed if the bank
             supports scheduled changes. If not given, the change applies from the next execution on.
+        :param endtoend_id: New End-to-end-Id
         :return: Returns either a NeedRetryResponse or NeedVOPResponse or TransactionResponse
             (with data['task_id'] and data['task_id_old'] set, if available). Banks may process the change
             asynchronously, so it can take a while until it is visible in ``get_standing_orders``.
@@ -1008,7 +1010,7 @@ class FinTS3Client:
 
         pain_message = modify_sepa_transfer_pain(
             standing_order.sepa_pain_message, amount=amount, reason=reason,
-            recipient_name=recipient_name, iban=iban, bic=bic,
+            recipient_name=recipient_name, iban=iban, bic=bic, endtoend_id=endtoend_id,
         )
         return self.change_standing_order(
             account, standing_order, pain_message,

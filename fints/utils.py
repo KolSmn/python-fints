@@ -25,7 +25,8 @@ def mt940_to_array(data):
     return transactions.parse(data)
 
 
-def modify_sepa_transfer_pain(pain_message, amount=None, reason=None, recipient_name=None, iban=None, bic=None):
+def modify_sepa_transfer_pain(pain_message, amount=None, reason=None, recipient_name=None, iban=None, bic=None,
+                              endtoend_id=None):
     """
     Change values of a SEPA pain.001 credit transfer message with exactly one payment, e.g. one returned by
     ``get_standing_orders``.
@@ -40,6 +41,7 @@ def modify_sepa_transfer_pain(pain_message, amount=None, reason=None, recipient_
     :param recipient_name: New recipient name
     :param iban: New recipient IBAN
     :param bic: New recipient BIC
+    :param endtoend_id: New End-to-end-Id
     :return: The changed pain.001 message as ``bytes``
     """
     if isinstance(pain_message, str):
@@ -99,6 +101,9 @@ def modify_sepa_transfer_pain(pain_message, amount=None, reason=None, recipient_
         version = re.search(r'pain\.001\.(\d{3})\.(\d{2})', namespace or '')
         use_bicfi = version is not None and version.group(1) == '001' and int(version.group(2)) >= 4
         new_element(institution, 'BICFI' if use_bicfi else 'BIC').text = bic
+
+    if endtoend_id is not None:
+        find(tx, 'PmtId/EndToEndId')[0].text = endtoend_id
 
     for message_id in root.xpath('//*[local-name()="GrpHdr"]/*[local-name()="MsgId"]'):
         message_id.text = make_msg_id()
