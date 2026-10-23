@@ -42,6 +42,15 @@ def _make_pain(version, bic='GENODE23X42', payments=1):
     return sepa.export()
 
 
+def _remove_from_pain(pain, name):
+    from lxml import etree
+
+    root = etree.fromstring(pain)
+    for element in root.xpath('//*[local-name()="{}"]'.format(name)):
+        element.getparent().remove(element)
+    return etree.tostring(root, xml_declaration=True, encoding='UTF-8')
+
+
 @pytest.mark.parametrize("version, bic_tag", [('pain.001.001.03', 'BIC'), ('pain.001.001.09', 'BICFI')])
 def test_modify_sepa_transfer_pain(version, bic_tag):
     from decimal import Decimal
@@ -80,6 +89,18 @@ def test_modify_sepa_transfer_pain(version, bic_tag):
     try_valid_xml(changed, version)
     assert values(changed, 'EndToEndId') == ['NEW-E2E-ID']
 
+    # Recipient name: only the creditor name changes, the debtor name stays
+    changed = modify_sepa_transfer_pain(original, recipient_name='New Receiver')
+    try_valid_xml(changed, version)
+    assert 'New Receiver' in values(changed, 'Nm')
+    assert 'Test Receiver' not in values(changed, 'Nm')
+    assert 'Test Sender' in values(changed, 'Nm')
+
+    # Reason for a message without remittance information: RmtInf/Ustrd is created
+    changed = modify_sepa_transfer_pain(_remove_from_pain(original, 'RmtInf'), reason='New reason')
+    try_valid_xml(changed, version)
+    assert values(changed, 'Ustrd') == ['New reason']
+
     with pytest.raises(ValueError):
         modify_sepa_transfer_pain(_make_pain(version, payments=2), amount=Decimal('1'))
 
@@ -108,6 +129,11 @@ def test_parse_sepa_transfer_pain(version):
     assert payment.endtoend_id == 'NEW-E2E-ID'
 
     assert parse_sepa_transfer_pain(_make_pain(version, bic=None)).bic is None
+
+    # Missing values are None
+    payment = parse_sepa_transfer_pain(_remove_from_pain(_make_pain(version), 'Amt'))
+    assert payment.amount is None
+    assert payment.recipient_name == 'Test Receiver'
 
     with pytest.raises(ValueError):
         parse_sepa_transfer_pain(_make_pain(version, payments=2))

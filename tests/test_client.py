@@ -275,6 +275,19 @@ def test_get_standing_order_parameters(fints_client):
     assert parameters['change']['execution_days_week'] == []
 
 
+def test_get_standing_order_parameters_unsupported(fints_client):
+    with fints_client:
+        fints_client.get_sepa_accounts()
+
+    # Bank does not support changing standing orders
+    fints_client.bpd.segments = [s for s in fints_client.bpd.segments if s.header.type != 'HICDNS']
+
+    parameters = fints_client.get_standing_order_parameters()
+
+    assert parameters['create'] is not None
+    assert parameters['change'] is None
+
+
 def test_delete_standing_order(fints_client):
     with fints_client:
         accounts = fints_client.get_sepa_accounts()
